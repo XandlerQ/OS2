@@ -6,19 +6,28 @@
 
 int main()
 {
-	std::vector<double> test_vals({ 0.1,0.31,0.251,0.8852 });
-	std::vector<int> test_idx({ 0,1,0,1 });
-	std::vector<int> test_amounts({ 0,2,4 });
+	std::vector<double> test_vals({ 1,-3,5,4,1 });
+	std::vector<int> test_idx({ 0,2,1,2,3 });
+	std::vector<int> test_amounts({ 0,1,2,3,5 });
 
-	std::vector<double> b({ 0.05,0.01 });
+	std::vector<double> b({ 1,8,-1,4 });
 
-	CSRMatrix A(2, test_vals, test_idx, test_amounts);
+	CSRMatrix A(4, test_vals, test_idx, test_amounts);
 
 	
 
-	std::cout << A;
+	std::cout << A << std::endl;
 
-	std::cout << A.transpose();
+	std::cout << A.transpose() << std::endl;
+
+	std::vector<double> trace = A.trace();
+
+	for (int i = 0; i < trace.size(); i++)
+	{
+		std::cout << trace.at(i) << "  ";
+	}
+
+	std::cout << std::endl;
 
 	BiCGSTAB solver(A, b);
 

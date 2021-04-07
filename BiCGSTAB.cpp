@@ -8,68 +8,88 @@ BiCGSTAB::BiCGSTAB()
 BiCGSTAB::BiCGSTAB(const CSRMatrix& p_A, const std::vector<double>& p_b):
 	f_A(p_A),
 	f_b(p_b),
-	f_x(p_b.size(), 0.5),
-	f_counter(0),
-	f_alpha(0),
-	f_beta(0)
-{
-	f_size = p_b.size();
-	f_r.resize(f_size);
-	f_p.resize(f_size);
-	f_z.resize(f_size);
-	f_s.resize(f_size);
-}
+	f_size(p_b.size()),
+	f_counter(0)
+{}
 
 void BiCGSTAB::solve(double p_precision)
 {
-	init();
+	
+	f_counter = 0;
 
-	std::vector<double> prevSolution(f_size, 0);
-	std::vector<double> prevP;
-	std::vector<double> prevR;
+	f_x = f_A.trace();
 
-	//double precision = 100 * sqrt(vectorScalarMultpl(vectorSubstract(f_A * f_x, f_b), vectorSubstract(f_A * f_x, f_b))) / sqrt(vectorScalarMultpl(f_b,f_b));
+	std::vector<double> r = vectorSubstract(f_b, f_A * f_x);
 
-	for (int i = 0; i < 10; i++)
+	std::vector<double> r_0 = r;
+
+	std::vector<double> h;
+
+	std::vector<double> s;
+
+	std::vector<double> t;
+
+	double alpha = 1;
+
+	double omega = 1;
+
+	double rho = 1;
+
+	double rho_prev = 1;
+
+	double beta;
+
+	std::vector<double> v(f_size, 0);
+
+	std::vector<double> p(f_size, 0);
+
+	for (int i = 0; i < 99999; i++)
 	{
-/*#pragma omp parallel sections
-		{
-#pragma omp section
-			{*/
-				f_alpha = vectorScalarMultpl(f_p, f_r) / vectorScalarMultpl(f_s, f_A * f_z);
-			/*}
-#pragma omp section
-			{*/
-				prevSolution = f_x;
-				f_x = vectorAdd(prevSolution, vectorMultiply(f_z, f_alpha));
-			/*}
-#pragma omp section
-			{*/
-				prevR = f_r;
-				f_r = vectorSubstract(f_r, vectorMultiply(f_A * f_z, f_alpha));
-			/*}
-#pragma omp section
-			{*/
-				prevP = f_p;
-				f_p = vectorSubstract(f_p, vectorMultiply(f_A.transpose() * f_s, f_alpha));
-			/*}
-		}*/
+		rho_prev = rho;
 
-		f_beta = vectorScalarMultpl(f_p, f_r) / vectorScalarMultpl(prevP, prevR);
-/*#pragma omp parallel sections
+		rho = vectorScalarMultpl(r_0, r);
+
+		beta = (rho / rho_prev) * (alpha / omega);
+
+		p = vectorAdd(r,
+			vectorMultiply(
+				vectorSubstract(p,
+					vectorMultiply(v,
+						omega)),
+				beta));
+
+		v = f_A * p;
+
+		alpha = rho / vectorScalarMultpl(r_0, v);
+
+		h = vectorAdd(f_x, vectorMultiply(p, alpha));
+
+		if (sqrt(
+			vectorScalarMultpl(
+				vectorSubstract(f_b, f_A * h),
+				vectorSubstract(f_b, f_A * h))) < p_precision)
 		{
-#pragma omp section
-			{*/
-				f_z = vectorAdd(f_r, vectorMultiply(f_z, f_beta));
-			/*}
-#pragma omp section
-			{*/
-				f_s = vectorAdd(f_p, vectorMultiply(f_s, f_beta));
-			/*}
-		}*/
+			f_x = h;
+			break;
+		}
+
+		s = vectorSubstract(r, vectorMultiply(v, alpha));
+
+		t = f_A * s;
+
+		omega = vectorScalarMultpl(t, s) / vectorScalarMultpl(t, t);
+
+		f_x = vectorAdd(h, vectorMultiply(s, omega));
+
+		if (sqrt(
+			vectorScalarMultpl(
+				vectorSubstract(f_b, f_A * f_x),
+				vectorSubstract(f_b, f_A * f_x))) < p_precision)
+			break;
+
+		r = vectorSubstract(s, vectorMultiply(t, omega));
+
 		f_counter++;
-
-		//precision = 100 * sqrt(vectorScalarMultpl(vectorSubstract(f_A * f_x, f_b), vectorSubstract(f_A * f_x, f_b))) / sqrt(vectorScalarMultpl(f_b, f_b));
 	}
 	
 }
@@ -84,17 +104,6 @@ unsigned long BiCGSTAB::getIterCount()
 	return f_counter;
 }
 
-void BiCGSTAB::init()
-{
-	std::vector<double> tech = f_A * f_x;
-
-	f_r = vectorSubstract(f_b, tech);
-
-	f_p.assign(f_r.begin(), f_r.end());
-	f_z.assign(f_r.begin(), f_r.end());
-	f_s.assign(f_r.begin(), f_r.end());
-}
-
 double BiCGSTAB::vectorScalarMultpl(const std::vector<double>& p_a, const std::vector<double>& p_b)
 {
 	double res = 0;
@@ -102,7 +111,7 @@ double BiCGSTAB::vectorScalarMultpl(const std::vector<double>& p_a, const std::v
 	//#pragma omp parallel for
 	for (int i = 0; i < p_a.size(); i++)
 	{
-		//#pragma omp atomic
+		#pragma omp atomic
 		res += p_a.at(i) * p_b.at(i);
 	}
 
@@ -141,6 +150,29 @@ std::vector<double> BiCGSTAB::vectorMultiply(const std::vector<double>& p_a, dou
 
 	return res;
 
+}
+
+std::vector<double> BiCGSTAB::find_r_(const std::vector<double>& p_v)
+{
+	std::vector<double> res(p_v.size(), 1);
+	bool isSuccessful = false;
+
+	for(int at = 0; at < p_v.size(); at++)
+	{
+		if (p_v.at(at) != 0)
+		{
+			res.at(at) = p_v.at(at);
+			isSuccessful = true;
+			break;
+		}
+	}
+
+	if (!isSuccessful)
+	{
+		throw(std::exception("Yikies!"));
+	}
+
+	return res;
 }
 
 

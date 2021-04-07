@@ -47,12 +47,14 @@ public:
 
 	friend CSRMatrix operator* (const double _d_to_mult, CSRMatrix& _M);
 
+	std::vector<double> operator* (const std::vector<double>& p_vec);
+
 	int Get_size() const;
 
 	int Get_amount() const;
 
-	std::vector<double> operator* (const std::vector<double>& p_vec);
+	CSRMatrix transpose() const;
 
-	CSRMatrix transpose();
+	std::vector<double> trace();
 
 };

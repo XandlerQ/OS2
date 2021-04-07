@@ -168,7 +168,7 @@ std::vector<double> CSRMatrix::operator* (const std::vector<double>& p_vec)
 	return res;
 }
 
-CSRMatrix CSRMatrix::transpose()
+CSRMatrix CSRMatrix::transpose() const
 {
 	CSRMatrix res(f_size, f_Mat.size(), f_indexes.size(), f_amounts.size());
 
@@ -186,16 +186,16 @@ CSRMatrix CSRMatrix::transpose()
 
 	for (int i = 0; i < f_size; i++)
 	{
-		for (int col = 0; col < f_indexes.size(); col++)
+		for (int atIdx = 0; atIdx < f_indexes.size(); atIdx++)
 		{
-			if (f_indexes.at(col) == i)
+			if (f_indexes.at(atIdx) == i)
 			{
 
-				*matIter = f_Mat.at(col);
+				*matIter = f_Mat.at(atIdx);
 				matIter++;
 
 				int atRow = 0;
-				while (col + 1 > f_amounts.at(atRow + 1))
+				while (atIdx + 1 > f_amounts.at(atRow + 1))
 				{
 					atRow++;
 				}
@@ -208,4 +208,26 @@ CSRMatrix CSRMatrix::transpose()
 	}
 
 	return res;
+}
+
+std::vector<double> CSRMatrix::trace()
+{
+	std::vector<double> trace(f_size, 0);
+
+	for (int atIdx = 0; atIdx < f_indexes.size(); atIdx++)
+	{
+		int atRow = 0;
+		
+		while (atIdx + 1 > f_amounts.at(atRow + 1))
+		{
+			atRow++;
+		}
+
+		if (f_indexes.at(atIdx) == atRow)
+		{
+			trace[atRow] = f_Mat.at(atIdx);
+		}
+	}
+
+	return trace;
 }
