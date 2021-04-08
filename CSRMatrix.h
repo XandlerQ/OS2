@@ -43,8 +43,6 @@ public:
 
 	friend std::ostream& operator<<(std::ostream& p_out, const CSRMatrix& _M);
 
-	friend std::istream& operator>>(std::istream& p_in, CSRMatrix& _M);
-
 	friend CSRMatrix operator* (const double _d_to_mult, CSRMatrix& _M);
 
 	std::vector<double> operator* (const std::vector<double>& p_vec);

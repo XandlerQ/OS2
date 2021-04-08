@@ -108,7 +108,7 @@ double BiCGSTAB::vectorScalarMultpl(const std::vector<double>& p_a, const std::v
 {
 	double res = 0;
 
-	//#pragma omp parallel for
+	#pragma omp parallel for
 	for (int i = 0; i < p_a.size(); i++)
 	{
 		#pragma omp atomic
@@ -122,7 +122,7 @@ std::vector<double> BiCGSTAB::vectorSubstract(const std::vector<double>& p_a, co
 {
 	std::vector<double> res(p_a.size()); 
 
-//#pragma omp parallel for
+#pragma omp parallel for
 	for (int w = 0; w < p_a.size(); w++)
 		res.at(w) = p_a.at(w) - p_b.at(w);
 
@@ -133,7 +133,7 @@ std::vector<double> BiCGSTAB::vectorAdd(const std::vector<double>& p_a, const st
 {
 	std::vector<double> res(p_a.size());
 
-//#pragma omp parallel for
+#pragma omp parallel for
 	for (int w = 0; w < p_a.size(); w++)
 		res.at(w) = p_a.at(w) + p_b.at(w);
 
@@ -144,7 +144,7 @@ std::vector<double> BiCGSTAB::vectorMultiply(const std::vector<double>& p_a, dou
 {
 	std::vector<double> res(p_a.size());
 
-//#pragma omp parallel for
+#pragma omp parallel for
 	for (int w = 0; w < p_a.size(); w++)
 		res.at(w) = p_a.at(w) * p_omega;
 

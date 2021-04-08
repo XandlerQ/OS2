@@ -6,15 +6,17 @@
 
 int main()
 {
-	std::vector<double> test_vals({ 1,-3,5,4,1 });
-	std::vector<int> test_idx({ 0,2,1,2,3 });
-	std::vector<int> test_amounts({ 0,1,2,3,5 });
+	std::vector<double> test_vals({ 9, 3, 1, 1, 11, 2, 1, 2, 1, 10, 2, 2, 1, 2, 9, 1, 1, 1, 12, 1, 8, 2, 2, 3, 8 });
+	std::vector<int> test_idx({ 0, 3, 4, 6, 1, 2, 3, 6, 1, 2, 3, 0, 1, 2, 3, 4, 0, 3, 4, 6, 5, 0, 1, 4, 6 });
+	std::vector<int> test_amounts({ 0,4,8,11,16,20,21,25 });
 
-	std::vector<double> b({ 1,8,-1,4 });
+	std::cout << test_vals.size() << "  " << test_idx.size() << std::endl;
 
-	CSRMatrix A(4, test_vals, test_idx, test_amounts);
+	std::vector<double> b({ 100,100,100,100,100,100,100 });
 
-	
+	CSRMatrix A(7, test_vals, test_idx, test_amounts);
+
+	omp_set_num_threads(8);
 
 	std::cout << A << std::endl;
 
@@ -31,7 +33,11 @@ int main()
 
 	BiCGSTAB solver(A, b);
 
-	solver.solve(0.1);
+	std::cout << std::endl << "***** " << omp_get_wtime() << std::endl;
+
+	solver.solve(0.000000001);
+
+	std::cout << std::endl << "***** " << omp_get_wtime() << std::endl;
 
 	auto res = solver.getSolution();
 
@@ -41,6 +47,7 @@ int main()
 	}
 
 	std::cout << std::endl << solver.getIterCount();
+
 
 	return 0;
 
