@@ -12,6 +12,155 @@ BiCGSTAB::BiCGSTAB(const CSRMatrix& p_A, const std::vector<double>& p_b):
 	f_counter(0)
 {}
 
+BiCGSTAB::BiCGSTAB(const std::string & p_pathA, const std::string & p_pathb):
+	f_size(0)
+{
+	setA(p_pathA);
+	setb(p_pathb);
+}
+
+BiCGSTAB::BiCGSTAB(std::string&& p_pathA, std::string&& p_pathb):
+	f_size(0)
+{
+	setA(p_pathA);
+	setb(p_pathb);
+}
+
+
+void BiCGSTAB::setA(std::string&& p_path)
+{
+	std::vector<double> mat;
+
+	std::vector<int> indexes;
+	std::vector<int> amounts;
+	std::vector<std::tuple<int, int, double>> tupleVector;
+
+
+
+	std::string tmp;
+
+	std::ifstream file_stream(p_path);
+
+	if (!file_stream.is_open())
+	{
+		std::cout << "ERROR" << std::endl;
+		throw(std::exception());
+	}
+
+	while (std::getline(file_stream, tmp))
+	{
+		std::regex numRegEx("[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)");
+
+		std::sregex_token_iterator cutIter(
+			tmp.cbegin(),
+			tmp.cend(),
+			numRegEx
+		);
+
+		int row = std::stoi(*cutIter);
+		cutIter++;
+
+		int col = std::stoi(*cutIter);
+		cutIter++;
+
+		double num = std::stod(*cutIter);
+
+		tupleVector.push_back(
+			std::make_tuple(row, col, num)
+		);
+	}
+
+	std::sort(
+		tupleVector.begin(),
+		tupleVector.end(),
+		[](const auto& a, const auto& b)
+		{
+			if (std::get<0>(a) == std::get<0>(b))
+				return std::get<1>(a) < std::get<1>(b);
+			return std::get<0>(a) < std::get<0>(b);
+		}
+
+	);
+
+	int prev_row = -1;
+
+
+
+	for (int i = 0; i < tupleVector.size(); i++)
+	{
+		mat.push_back(std::get<2>(tupleVector[i]));
+		indexes.push_back(std::get<1>(tupleVector[i]) - 1);
+
+		if (std::get<0>(tupleVector[i]) != prev_row)
+		{
+			amounts.push_back(i);
+			prev_row = std::get<0>(tupleVector[i]);
+		}
+	}
+
+	amounts.push_back(mat.size());
+
+	f_A = CSRMatrix(amounts.size() - 1, mat, indexes, amounts);
+	f_size = amounts.size() - 1;
+
+}
+
+void BiCGSTAB::setA(const std::string& p_path)
+{
+	std::string path = p_path;
+
+	setA(std::move(path));
+}
+
+CSRMatrix BiCGSTAB::getA() const
+{
+	return f_A;
+}
+
+void BiCGSTAB::setb(std::string&& p_path)
+{
+	if (f_size == 0)
+		throw(std::exception());
+
+	std::vector<double> numbers;
+
+	std::ifstream file_stream(p_path);
+
+	if (!file_stream.is_open())
+	{
+		throw(std::exception());
+	}
+
+	std::string tmp;
+
+	std::getline(file_stream, tmp);
+
+	std::regex numRegEx("[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)");
+
+	std::transform(std::sregex_token_iterator{ tmp.cbegin(), tmp.cend(), numRegEx },
+				{},
+				std::back_inserter(numbers),
+				[](const auto& val)
+				{
+					return std::stod(val.str());
+				}
+	); 
+
+	f_b = numbers;
+}
+
+void BiCGSTAB::setb(const std::string& p_path)
+{
+	std::string path = p_path;
+
+	setb(std::move(path));
+}
+
+std::vector<double> BiCGSTAB::getb() const
+{
+	return f_b;
+}
+
 void BiCGSTAB::solve(double p_precision)
 {
 	
@@ -29,21 +178,21 @@ void BiCGSTAB::solve(double p_precision)
 
 	std::vector<double> t;
 
-	double alpha = 1;
+	long double alpha = 1;
 
-	double omega = 1;
+	long double omega = 1;
 
-	double rho = 1;
+	long double rho = 1;
 
-	double rho_prev = 1;
+	long double rho_prev = 1;
 
-	double beta;
+	long double beta;
 
 	std::vector<double> v(f_size, 0);
 
 	std::vector<double> p(f_size, 0);
 
-	for (int i = 0; i < 99999; i++)
+	for (int i = 0; i < 9999; i++)
 	{
 		rho_prev = rho;
 
@@ -108,10 +257,10 @@ double BiCGSTAB::vectorScalarMultpl(const std::vector<double>& p_a, const std::v
 {
 	double res = 0;
 
-	#pragma omp parallel for
+	//#pragma omp parallel for
 	for (int i = 0; i < p_a.size(); i++)
 	{
-		#pragma omp atomic
+		//#pragma omp atomic
 		res += p_a.at(i) * p_b.at(i);
 	}
 

@@ -1,28 +1,23 @@
 
 #include <iostream>
 #include <vector>
+#include <ctime>
 #include "BiCGSTAB.h"
 
 
 int main()
 {
-	std::vector<double> test_vals({ 9, 3, 1, 1, 11, 2, 1, 2, 1, 10, 2, 2, 1, 2, 9, 1, 1, 1, 12, 1, 8, 2, 2, 3, 8 });
-	std::vector<int> test_idx({ 0, 3, 4, 6, 1, 2, 3, 6, 1, 2, 3, 0, 1, 2, 3, 4, 0, 3, 4, 6, 5, 0, 1, 4, 6 });
-	std::vector<int> test_amounts({ 0,4,8,11,16,20,21,25 });
+	srand(time(NULL));
 
-	std::cout << test_vals.size() << "  " << test_idx.size() << std::endl;
-
-	std::vector<double> b({ 100,100,100,100,100,100,100 });
-
-	CSRMatrix A(7, test_vals, test_idx, test_amounts);
+	BiCGSTAB problem("D:\\screens\\Study\\ня\\work2\\opersis2\\A.txt", "D:\\screens\\Study\\ня\\work2\\opersis2\\b.txt");
 
 	omp_set_num_threads(8);
 
-	std::cout << A << std::endl;
+	//std::cout << problem.getA() << std::endl;
 
-	std::cout << A.transpose() << std::endl;
+	//std::cout << problem.getA().transpose() << std::endl;
 
-	std::vector<double> trace = A.trace();
+	std::vector<double> trace = problem.getA().trace();
 
 	for (int i = 0; i < trace.size(); i++)
 	{
@@ -31,22 +26,28 @@ int main()
 
 	std::cout << std::endl;
 
-	BiCGSTAB solver(A, b);
+	
+	
+	
 
-	std::cout << std::endl << "***** " << omp_get_wtime() << std::endl;
+	//double timeStart = omp_get_wtime();
+	clock_t start = clock();
+	problem.solve(0.001);
+	clock_t end = clock();
 
-	solver.solve(0.000000001);
+	std::cout << "/-/-/-/-/-/-/-/" << (double)(end - start) / CLOCKS_PER_SEC << std::endl;
+	//double timeEnd = omp_get_wtime();
 
-	std::cout << std::endl << "***** " << omp_get_wtime() << std::endl;
+	//std::cout << std::endl << "				*****             " << timeEnd - timeStart << std::endl;
 
-	auto res = solver.getSolution();
+	auto res = problem.getSolution();
 
 	for (int i = 0; i < res.size(); i++)
 	{
 		std::cout << res.at(i) << "  ";
 	}
 
-	std::cout << std::endl << solver.getIterCount();
+	std::cout << std::endl << problem.getIterCount();
 
 
 	return 0;
