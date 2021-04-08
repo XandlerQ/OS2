@@ -39,10 +39,16 @@ CSRMatrix CSRMatrix::operator* (double p_val) const
 {
 	CSRMatrix res(*this);
 	
-	std::for_each(res.f_Mat.begin(), res.f_Mat.end(), [p_val](double& element)
+#pragma omp parallel for schedule (static)
+	for(int i = 0; i < res.f_Mat.size(); i++)
+	{
+		res.f_Mat.at(i) *= p_val;
+	}
+
+	/*std::for_each(res.f_Mat.begin(), res.f_Mat.end(), [p_val](double& element)
 		{
 			element *= p_val;
-		});
+		});*/
 
 	return res;
 }
@@ -51,18 +57,31 @@ CSRMatrix& CSRMatrix::operator= (const CSRMatrix& p_M)
 {
 	f_size = p_M.f_size;
 
-	f_Mat.clear();
-	f_Mat.shrink_to_fit();
-
-	f_indexes.clear();
-	f_indexes.shrink_to_fit();
-
-	f_amounts.clear();
-	f_amounts.shrink_to_fit();
-
-	f_Mat.assign(p_M.f_Mat.begin(), p_M.f_Mat.end());
-	f_indexes.assign(p_M.f_indexes.begin(), p_M.f_indexes.end());
-	f_amounts.assign(p_M.f_amounts.begin(), p_M.f_amounts.end());
+#pragma omp parallel sections
+	{
+		
+#pragma omp section
+		{
+			//printf("parallel region, thread=%d\n", omp_get_thread_num());
+			f_Mat.clear();
+			f_Mat.shrink_to_fit();
+			f_Mat.assign(p_M.f_Mat.begin(), p_M.f_Mat.end());
+		}
+#pragma omp section
+		{
+			//printf("parallel region, thread=%d\n", omp_get_thread_num());
+			f_indexes.clear();
+			f_indexes.shrink_to_fit();
+			f_indexes.assign(p_M.f_indexes.begin(), p_M.f_indexes.end());
+		}
+#pragma omp section
+		{
+			//("parallel region, thread=%d\n", omp_get_thread_num());
+			f_amounts.clear();
+			f_amounts.shrink_to_fit();
+			f_amounts.assign(p_M.f_amounts.begin(), p_M.f_amounts.end());
+		}
+	}
 
 	return *this;
 }
@@ -71,10 +90,12 @@ CSRMatrix operator* (const double p_val, CSRMatrix& p_M)
 {
 	CSRMatrix res(p_M);
 
-	std::for_each(res.f_Mat.begin(), res.f_Mat.end(), [p_val](double& element)
-		{
-			element *= p_val;
-		});
+#pragma omp parallel for schedule (static)
+	for (int i = 0; i < res.f_Mat.size(); i++)
+	{
+		//printf("parallel region, thread=%d\n", omp_get_thread_num());
+		res.f_Mat.at(i) *= p_val;
+	}
 
 	return res;
 }
@@ -142,9 +163,10 @@ std::vector<double> CSRMatrix::operator* (const std::vector<double>& p_vec)
 	std::vector<int>::const_iterator itr_indexes(f_indexes.begin());
 	std::vector<double>::const_iterator itr_values(f_Mat.begin());
 
-//#pragma omp parallel for
 	for (int row = 0; row < f_size; row++)
 	{
+		
+
 		unsigned valCurRow = *(itr_amounts + 1) - *itr_amounts;
 
 		double elem = 0;

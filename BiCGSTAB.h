@@ -15,15 +15,17 @@ private:
 	int f_size;
 	unsigned long f_counter;
 
+	bool test;
+
 public:
 
 	BiCGSTAB();
 
-	BiCGSTAB(const CSRMatrix& p_A, const std::vector<double>& p_b);
+	BiCGSTAB(const CSRMatrix& p_A, const std::vector<double>& p_b, bool test);
 
 	BiCGSTAB(const std::string& p_pathA, const std::string& p_pathb);
 
-	BiCGSTAB(std::string&& p_pathA, std::string&& p_pathb);
+	BiCGSTAB(std::string&& p_pathA, std::string&& p_pathb, bool test);
 
 	void setA(std::string&& p_path);
 

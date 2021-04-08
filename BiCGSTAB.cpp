@@ -5,11 +5,12 @@
 BiCGSTAB::BiCGSTAB()
 {}
 
-BiCGSTAB::BiCGSTAB(const CSRMatrix& p_A, const std::vector<double>& p_b):
+BiCGSTAB::BiCGSTAB(const CSRMatrix& p_A, const std::vector<double>& p_b, bool p_test):
 	f_A(p_A),
 	f_b(p_b),
 	f_size(p_b.size()),
-	f_counter(0)
+	f_counter(0),
+	test(p_test)
 {}
 
 BiCGSTAB::BiCGSTAB(const std::string & p_pathA, const std::string & p_pathb):
@@ -19,8 +20,9 @@ BiCGSTAB::BiCGSTAB(const std::string & p_pathA, const std::string & p_pathb):
 	setb(p_pathb);
 }
 
-BiCGSTAB::BiCGSTAB(std::string&& p_pathA, std::string&& p_pathb):
-	f_size(0)
+BiCGSTAB::BiCGSTAB(std::string&& p_pathA, std::string&& p_pathb, bool p_test):
+	f_size(0),
+	test(p_test)
 {
 	setA(p_pathA);
 	setb(p_pathb);
@@ -257,10 +259,11 @@ double BiCGSTAB::vectorScalarMultpl(const std::vector<double>& p_a, const std::v
 {
 	double res = 0;
 
-	//#pragma omp parallel for
+	#pragma omp parallel for schedule (static)
 	for (int i = 0; i < p_a.size(); i++)
 	{
-		//#pragma omp atomic
+		//printf("parallel region, thread=%d\n", omp_get_thread_num());
+		#pragma omp atomic
 		res += p_a.at(i) * p_b.at(i);
 	}
 
@@ -271,9 +274,12 @@ std::vector<double> BiCGSTAB::vectorSubstract(const std::vector<double>& p_a, co
 {
 	std::vector<double> res(p_a.size()); 
 
-#pragma omp parallel for
+#pragma omp parallel for schedule (static)
 	for (int w = 0; w < p_a.size(); w++)
+	{
+		//printf("parallel region, thread=%d\n", omp_get_thread_num());
 		res.at(w) = p_a.at(w) - p_b.at(w);
+	}
 
 	return res;
 }
@@ -282,9 +288,25 @@ std::vector<double> BiCGSTAB::vectorAdd(const std::vector<double>& p_a, const st
 {
 	std::vector<double> res(p_a.size());
 
-#pragma omp parallel for
-	for (int w = 0; w < p_a.size(); w++)
-		res.at(w) = p_a.at(w) + p_b.at(w);
+
+	if (test)
+	{
+#pragma omp parallel for schedule (static)
+		for (int w = 0; w < p_a.size(); w++)
+		{
+#pragma omp critical (cout)
+			std::cout << " " << omp_get_thread_num();
+			res.at(w) = p_a.at(w) + p_b.at(w);
+		}
+	}
+	else
+	{
+#pragma omp parallel for schedule (static)
+		for (int w = 0; w < p_a.size(); w++)
+		{
+			res.at(w) = p_a.at(w) + p_b.at(w);
+		}
+	}
 
 	return res;
 }
@@ -293,35 +315,16 @@ std::vector<double> BiCGSTAB::vectorMultiply(const std::vector<double>& p_a, dou
 {
 	std::vector<double> res(p_a.size());
 
-#pragma omp parallel for
+#pragma omp parallel for schedule (static)
 	for (int w = 0; w < p_a.size(); w++)
+	{
+		//printf("parallel region, thread=%d\n", omp_get_thread_num());
 		res.at(w) = p_a.at(w) * p_omega;
+	}
 
 	return res;
 
 }
 
-std::vector<double> BiCGSTAB::find_r_(const std::vector<double>& p_v)
-{
-	std::vector<double> res(p_v.size(), 1);
-	bool isSuccessful = false;
-
-	for(int at = 0; at < p_v.size(); at++)
-	{
-		if (p_v.at(at) != 0)
-		{
-			res.at(at) = p_v.at(at);
-			isSuccessful = true;
-			break;
-		}
-	}
-
-	if (!isSuccessful)
-	{
-		throw(std::exception("Yikies!"));
-	}
-
-	return res;
-}
 
 
