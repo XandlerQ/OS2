@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <algorithm>
 
+int threads = 1;
+
 
 CSRMatrix::CSRMatrix():
 	f_size(0)
@@ -38,11 +40,11 @@ CSRMatrix::CSRMatrix(const CSRMatrix& p_M):
 CSRMatrix CSRMatrix::operator* (double p_val) const
 {
 	CSRMatrix res(*this);
-	
-#pragma omp parallel for schedule (static)
-	for(int i = 0; i < res.f_Mat.size(); i++)
+	int size = res.f_Mat.size();
+#pragma omp parallel for //schedule(static)
+	for(int i = 0; i < size; i++)
 	{
-		res.f_Mat.at(i) *= p_val;
+		res.f_Mat[i] *= p_val;
 	}
 
 	/*std::for_each(res.f_Mat.begin(), res.f_Mat.end(), [p_val](double& element)
@@ -57,29 +59,31 @@ CSRMatrix& CSRMatrix::operator= (const CSRMatrix& p_M)
 {
 	f_size = p_M.f_size;
 
-#pragma omp parallel sections
+#pragma omp parallel
 	{
-		
-#pragma omp section
+#pragma omp sections
 		{
-			//printf("parallel region, thread=%d\n", omp_get_thread_num());
-			f_Mat.clear();
-			f_Mat.shrink_to_fit();
-			f_Mat.assign(p_M.f_Mat.begin(), p_M.f_Mat.end());
-		}
 #pragma omp section
-		{
-			//printf("parallel region, thread=%d\n", omp_get_thread_num());
-			f_indexes.clear();
-			f_indexes.shrink_to_fit();
-			f_indexes.assign(p_M.f_indexes.begin(), p_M.f_indexes.end());
-		}
+			{
+				//printf("parallel region, thread=%d\n", omp_get_thread_num());
+				f_Mat.clear();
+				f_Mat.shrink_to_fit();
+				f_Mat.assign(p_M.f_Mat.begin(), p_M.f_Mat.end());
+			}
 #pragma omp section
-		{
-			//("parallel region, thread=%d\n", omp_get_thread_num());
-			f_amounts.clear();
-			f_amounts.shrink_to_fit();
-			f_amounts.assign(p_M.f_amounts.begin(), p_M.f_amounts.end());
+			{
+				//printf("parallel region, thread=%d\n", omp_get_thread_num());
+				f_indexes.clear();
+				f_indexes.shrink_to_fit();
+				f_indexes.assign(p_M.f_indexes.begin(), p_M.f_indexes.end());
+			}
+#pragma omp section
+			{
+				//("parallel region, thread=%d\n", omp_get_thread_num());
+				f_amounts.clear();
+				f_amounts.shrink_to_fit();
+				f_amounts.assign(p_M.f_amounts.begin(), p_M.f_amounts.end());
+			}
 		}
 	}
 
@@ -90,11 +94,13 @@ CSRMatrix operator* (const double p_val, CSRMatrix& p_M)
 {
 	CSRMatrix res(p_M);
 
-#pragma omp parallel for schedule (static)
-	for (int i = 0; i < res.f_Mat.size(); i++)
+	int size = res.f_Mat.size();
+
+#pragma omp parallel for //schedule(static)
+	for (int i = 0; i < size; i++)
 	{
 		//printf("parallel region, thread=%d\n", omp_get_thread_num());
-		res.f_Mat.at(i) *= p_val;
+		res.f_Mat[i] *= p_val;
 	}
 
 	return res;
@@ -159,33 +165,18 @@ std::vector<double> CSRMatrix::operator* (const std::vector<double>& p_vec)
 	if (f_size != p_vec.size())
 		throw(std::exception("yikies!"));
 
-	std::vector<int>::const_iterator itr_amounts(f_amounts.begin());
-	std::vector<int>::const_iterator itr_indexes(f_indexes.begin());
-	std::vector<double>::const_iterator itr_values(f_Mat.begin());
-
+#pragma omp parallel for
 	for (int row = 0; row < f_size; row++)
 	{
-		
-
-		unsigned valCurRow = *(itr_amounts + 1) - *itr_amounts;
-
 		double elem = 0;
-
-		for (unsigned col = 0; col < valCurRow; col++)
+		for (int col = f_amounts[row]; col < f_amounts[row + 1]; col++)
 		{
 			
-			elem += p_vec.at(*itr_indexes) * *itr_values;
-
-			itr_values++;
-			itr_indexes++;
+			elem += p_vec[f_indexes[col]] * f_Mat[col];
 		}
 
-		res.at(row) = elem;
-
-		itr_amounts++;
+		res[row] = elem;
 	}
-
-
 
 	return res;
 }
@@ -235,7 +226,7 @@ CSRMatrix CSRMatrix::transpose() const
 std::vector<double> CSRMatrix::trace()
 {
 	std::vector<double> trace(f_size, 0);
-
+#pragma omp parallel for
 	for (int atIdx = 0; atIdx < f_indexes.size(); atIdx++)
 	{
 		int atRow = 0;

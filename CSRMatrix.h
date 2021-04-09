@@ -1,5 +1,7 @@
 #pragma once
 
+extern int threads;
+
 #include <math.h>
 #include "IncompatibleDimException.h"
 #include <iostream>
@@ -54,5 +56,20 @@ public:
 	CSRMatrix transpose() const;
 
 	std::vector<double> trace();
+
+	std::vector<double> getMat() const
+	{
+		return f_Mat;
+	}
+
+	std::vector<int> getIndexes() const
+	{
+		return f_indexes;
+	}
+
+	std::vector<int> getAmounts() const
+	{
+		return f_amounts;
+	}
 
 };

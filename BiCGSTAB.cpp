@@ -202,35 +202,30 @@ void BiCGSTAB::solve(double p_precision)
 
 		beta = (rho / rho_prev) * (alpha / omega);
 
-		p = vectorAdd(r,
-			vectorMultiply(
-				vectorSubstract(p,
-					vectorMultiply(v,
-						omega)),
-				beta));
+		p = specOp2(r, p, v, omega, beta);
 
 		v = f_A * p;
 
 		alpha = rho / vectorScalarMultpl(r_0, v);
 
-		h = vectorAdd(f_x, vectorMultiply(p, alpha));
+		h = specOp3(f_x, p, alpha, 1);
 
-		if (sqrt(
+		/*if (sqrt(
 			vectorScalarMultpl(
 				vectorSubstract(f_b, f_A * h),
 				vectorSubstract(f_b, f_A * h))) < p_precision)
 		{
 			f_x = h;
 			break;
-		}
+		}*/
 
-		s = vectorSubstract(r, vectorMultiply(v, alpha));
+		s = specOp3(r, v, alpha, -1);
 
 		t = f_A * s;
 
 		omega = vectorScalarMultpl(t, s) / vectorScalarMultpl(t, t);
 
-		f_x = vectorAdd(h, vectorMultiply(s, omega));
+		f_x = specOp3(h, s, omega, 1);
 
 		if (sqrt(
 			vectorScalarMultpl(
@@ -238,11 +233,38 @@ void BiCGSTAB::solve(double p_precision)
 				vectorSubstract(f_b, f_A * f_x))) < p_precision)
 			break;
 
-		r = vectorSubstract(s, vectorMultiply(t, omega));
+		r = specOp3(s, t, omega, -1);
+
 
 		f_counter++;
 	}
 	
+}
+
+std::vector<double> BiCGSTAB::specOp2(const std::vector<double>& p_r, const std::vector<double>& p_p, const std::vector<double>& p_v, double omega, double beta) const
+{
+	std::vector<double> res(f_size, 0);
+
+#pragma omp parallel for
+	for (int at = 0; at < f_size; at++)
+	{
+		res[at] = p_r[at] + (p_p[at] - p_v[at] * omega) * beta;
+	}
+
+	return res;
+}
+
+std::vector<double> BiCGSTAB::specOp3(const std::vector<double>& p_s, const std::vector<double>& p_t, double num, int sign) const
+{
+	std::vector<double> res(f_size, 0);
+
+#pragma omp parallel for
+	for (int at = 0; at < f_size; at++)
+	{
+		res[at] = p_s[at] + sign * (p_t[at] * num);
+	}
+
+	return res;
 }
 
 std::vector<double> BiCGSTAB::getSolution()
@@ -258,27 +280,27 @@ unsigned long BiCGSTAB::getIterCount()
 double BiCGSTAB::vectorScalarMultpl(const std::vector<double>& p_a, const std::vector<double>& p_b)
 {
 	double res = 0;
-
-	#pragma omp parallel for schedule (static)
-	for (int i = 0; i < p_a.size(); i++)
+	int size = p_a.size();
+#pragma omp parallel for reduction(+:res)
+	for (int i = 0; i < size; i++)
 	{
 		//printf("parallel region, thread=%d\n", omp_get_thread_num());
-		#pragma omp atomic
-		res += p_a.at(i) * p_b.at(i);
+		
+		res += p_a[i] * p_b[i];
 	}
-
 	return res;
 }
 
 std::vector<double> BiCGSTAB::vectorSubstract(const std::vector<double>& p_a, const std::vector<double>& p_b)
 {
-	std::vector<double> res(p_a.size()); 
-
-#pragma omp parallel for schedule (static)
-	for (int w = 0; w < p_a.size(); w++)
+	int size = p_a.size();
+	std::vector<double> res(size); 
+	
+#pragma omp parallel for //schedule(static)
+	for (int w = 0; w < size; w++)
 	{
 		//printf("parallel region, thread=%d\n", omp_get_thread_num());
-		res.at(w) = p_a.at(w) - p_b.at(w);
+		res[w] = p_a[w] - p_b[w];
 	}
 
 	return res;
@@ -286,25 +308,27 @@ std::vector<double> BiCGSTAB::vectorSubstract(const std::vector<double>& p_a, co
 
 std::vector<double> BiCGSTAB::vectorAdd(const std::vector<double>& p_a, const std::vector<double>& p_b)
 {
-	std::vector<double> res(p_a.size());
 
+	int size = p_a.size();
+	std::vector<double> res(size);
+	
 
 	if (test)
 	{
-#pragma omp parallel for schedule (static)
-		for (int w = 0; w < p_a.size(); w++)
+#pragma omp parallel for //schedule(static)
+		for (int w = 0; w < size; w++)
 		{
 #pragma omp critical (cout)
 			std::cout << " " << omp_get_thread_num();
-			res.at(w) = p_a.at(w) + p_b.at(w);
+			res[w] = p_a[w] + p_b[w];
 		}
 	}
 	else
 	{
-#pragma omp parallel for schedule (static)
-		for (int w = 0; w < p_a.size(); w++)
+#pragma omp parallel for //schedule(static)
+		for (int w = 0; w < size; w++)
 		{
-			res.at(w) = p_a.at(w) + p_b.at(w);
+			res[w] = p_a[w] + p_b[w];
 		}
 	}
 
@@ -313,13 +337,13 @@ std::vector<double> BiCGSTAB::vectorAdd(const std::vector<double>& p_a, const st
 
 std::vector<double> BiCGSTAB::vectorMultiply(const std::vector<double>& p_a, double p_omega)
 {
-	std::vector<double> res(p_a.size());
-
-#pragma omp parallel for schedule (static)
-	for (int w = 0; w < p_a.size(); w++)
+	int size = p_a.size();
+	std::vector<double> res(size);
+#pragma omp parallel for //schedule(static)
+	for (int w = 0; w < size; w++)
 	{
 		//printf("parallel region, thread=%d\n", omp_get_thread_num());
-		res.at(w) = p_a.at(w) * p_omega;
+		res[w] = p_a[w] * p_omega;
 	}
 
 	return res;

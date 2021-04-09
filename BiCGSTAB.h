@@ -40,6 +40,10 @@ public:
 	std::vector<double> getb() const;
 
 	void solve(double p_precision);
+
+	std::vector<double> specOp2(const std::vector<double>& p_r, const std::vector<double>& p_p, const std::vector<double>& p_v, double omega, double beta) const;
+
+	std::vector<double> specOp3(const std::vector<double>& p_s, const std::vector<double>& p_t, double num, int sign) const;
 	
 	std::vector<double> getSolution();
 
