@@ -194,7 +194,7 @@ void BiCGSTAB::solve(double p_precision)
 
 	std::vector<double> p(f_size, 0);
 
-	for (int i = 0; i < 9999; i++)
+	for (int i = 0; i < 99999999; i++)
 	{
 		rho_prev = rho;
 
@@ -348,6 +348,14 @@ std::vector<double> BiCGSTAB::vectorMultiply(const std::vector<double>& p_a, dou
 
 	return res;
 
+}
+
+double BiCGSTAB::evaluateSolution()
+{
+	return sqrt(
+		vectorScalarMultpl(
+			vectorSubstract(f_b, f_A * f_x),
+			vectorSubstract(f_b, f_A * f_x)));
 }
 
 

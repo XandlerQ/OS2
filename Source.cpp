@@ -6,6 +6,13 @@
 
 static bool test;
 
+void printvector(std::vector<double> p_vec)
+{
+    for (int i = 0; i < p_vec.size(); i++)
+    {
+        std::cout << p_vec.at(i) << std::endl;
+    }
+}
 
 int main()
 {
@@ -15,7 +22,9 @@ int main()
 
 	std::cin >> test;
 
-	BiCGSTAB problem("D:\\screens\\Study\\ня\\work2\\opersis2\\A.txt", "D:\\screens\\Study\\ня\\work2\\opersis2\\b.txt", test);
+    omp_set_num_threads(4);
+
+	BiCGSTAB problem("D:\\screens\\Study\\ня\\work2\\opersis2\\1138_bus.txt", "D:\\screens\\Study\\ня\\work2\\opersis2\\b1138.txt", test);
 
     //std::cout << problem.getA();
 
@@ -34,7 +43,7 @@ int main()
 
 		double timeStart = omp_get_wtime();
 		//clock_t start = clock();
-		problem.solve(0.000001);
+		problem.solve(0.00001);
 		//clock_t end = clock();
 		double timeEnd = omp_get_wtime();
 
@@ -45,11 +54,16 @@ int main()
 			std::cout << res.at(i) << std::endl;
 		}
 
-		std::cout << std::endl << problem.getIterCount();
+        
 
 		//std::cout << std::endl << "/-/-/-/-/-/-/-/" << (double)(end - start) / CLOCKS_PER_SEC << std::endl;
-		std::cout << std::endl << "				*****             " << timeEnd - timeStart << std::endl;
+		
 
+        std:: cout << std::cout << "Precision : " << problem.evaluateSolution();
+
+        std::cout << std::endl << "				*****             " << timeEnd - timeStart << std::endl;
+
+        std::cout << std::endl << problem.getIterCount() << std::endl;
 	}
 	return 0;
 

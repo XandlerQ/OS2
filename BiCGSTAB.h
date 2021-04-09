@@ -57,5 +57,5 @@ public:
 
 	std::vector<double> vectorMultiply(const std::vector<double>&, double p_omega);
 
-	std::vector<double> find_r_(const std::vector<double>&);
+	double evaluateSolution();
 };
