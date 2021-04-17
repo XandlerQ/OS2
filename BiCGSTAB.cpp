@@ -183,6 +183,8 @@ void BiCGSTAB::solve(double p_precision)
 
 	std::vector<double> tech;
 
+	double techNum = 0;
+
 	std::vector<double> r = vectorSubstract(f_b, f_A * f_x);
 
 	std::vector<double> r_0 = r;
@@ -213,13 +215,25 @@ void BiCGSTAB::solve(double p_precision)
 
 		rho = vectorScalarMultpl(r_0, r);
 
+		if (rho == 0)
+		{
+			throw std::exception("Variable rho turned out to be zero. Program stopped due to possible division by zero.");
+		}
+
 		beta = (rho / rho_prev) * (alpha / omega);
 
 		p = specOp2(r, p, v, omega, beta);
 
 		v = f_A * p;
 
-		alpha = rho / vectorScalarMultpl(r_0, v);
+		techNum = vectorScalarMultpl(r_0, v);
+
+		if (techNum == 0)
+		{
+			throw std::exception("Variable vectorScalarMultpl(r_0, v) turned out to be zero. Program stopped due to possible division by zero.");
+		}
+
+		alpha = rho / techNum;
 
 		h = specOp3(f_x, p, alpha, 1);
 
@@ -227,7 +241,14 @@ void BiCGSTAB::solve(double p_precision)
 
 		t = f_A * s;
 
-		omega = vectorScalarMultpl(t, s) / vectorScalarMultpl(t, t);
+		techNum = vectorScalarMultpl(t, t);
+
+		if (techNum == 0)
+		{
+			throw std::exception("Variable vectorScalarMultpl(t, t) turned out to be zero. Program stopped due to possible division by zero.");
+		}
+
+		omega = vectorScalarMultpl(t, s) / techNum;
 
 		f_x = specOp3(h, s, omega, 1);
 

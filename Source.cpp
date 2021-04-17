@@ -54,10 +54,16 @@ int main()
 	{
 		std::string option;
 
+		double precision;
+
 		std::cout << std::endl << "Input thread number >>>  ";
 
 
 		std::cin >> threads;
+
+		std::cout << std::endl << "Input precision >>>  ";
+
+		std::cin >> precision;
 
 
 
@@ -66,7 +72,15 @@ int main()
         
 
 		double timeStart = omp_get_wtime();
-		problem.solve(0.00001);
+		try
+		{
+			problem.solve(precision);
+		}
+		catch (std::exception exception)
+		{
+			std::cout << "Exception caught :" << std::endl << "''" << exception.what() << "''";
+			return 1;
+		}
 		double timeEnd = omp_get_wtime();
 
         std:: cout << std::endl << "------------ Summary ------------" << std::endl << "Precision : " << problem.evaluateSolution() << std::endl;
