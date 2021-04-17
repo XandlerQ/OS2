@@ -2,27 +2,29 @@
 #include <math.h>
 
 
-BiCGSTAB::BiCGSTAB()
+BiCGSTAB::BiCGSTAB():
+	f_size(0),
+	f_counter(0)
 {}
 
-BiCGSTAB::BiCGSTAB(const CSRMatrix& p_A, const std::vector<double>& p_b, bool p_test):
+BiCGSTAB::BiCGSTAB(const CSRMatrix& p_A, const std::vector<double>& p_b):
 	f_A(p_A),
 	f_b(p_b),
 	f_size(p_b.size()),
-	f_counter(0),
-	test(p_test)
+	f_counter(0)
 {}
 
 BiCGSTAB::BiCGSTAB(const std::string & p_pathA, const std::string & p_pathb):
-	f_size(0)
+	f_size(0),
+	f_counter(0)
 {
 	setA(p_pathA);
 	setb(p_pathb);
 }
 
-BiCGSTAB::BiCGSTAB(std::string&& p_pathA, std::string&& p_pathb, bool p_test):
+BiCGSTAB::BiCGSTAB(std::string&& p_pathA, std::string&& p_pathb):
 	f_size(0),
-	test(p_test)
+	f_counter(0)
 {
 	setA(p_pathA);
 	setb(p_pathb);
@@ -45,8 +47,7 @@ void BiCGSTAB::setA(std::string&& p_path)
 
 	if (!file_stream.is_open())
 	{
-		std::cout << "ERROR" << std::endl;
-		throw(std::exception());
+		throw(std::exception("Matrix A file stream was not opened."));
 	}
 
 	while (std::getline(file_stream, tmp))
@@ -114,6 +115,11 @@ void BiCGSTAB::setA(const std::string& p_path)
 	setA(std::move(path));
 }
 
+int BiCGSTAB::getSize() const
+{
+	return f_size;
+}
+
 CSRMatrix BiCGSTAB::getA() const
 {
 	return f_A;
@@ -122,7 +128,7 @@ CSRMatrix BiCGSTAB::getA() const
 void BiCGSTAB::setb(std::string&& p_path)
 {
 	if (f_size == 0)
-		throw(std::exception());
+		throw(std::exception("Tried to initialize vector b before matrix A."));
 
 	std::vector<double> numbers;
 
@@ -130,7 +136,7 @@ void BiCGSTAB::setb(std::string&& p_path)
 
 	if (!file_stream.is_open())
 	{
-		throw(std::exception());
+		throw(std::exception("Vector b file stream was not opened."));
 	}
 
 	std::string tmp;
@@ -147,6 +153,11 @@ void BiCGSTAB::setb(std::string&& p_path)
 					return std::stod(val.str());
 				}
 	); 
+
+	if (numbers.size() != f_size)
+	{
+		throw(std::exception("Matrix A and vector b sizes were incompatible."));
+	}
 
 	f_b = numbers;
 }
@@ -169,6 +180,8 @@ void BiCGSTAB::solve(double p_precision)
 	f_counter = 0;
 
 	f_x = f_A.trace();
+
+	std::vector<double> tech;
 
 	std::vector<double> r = vectorSubstract(f_b, f_A * f_x);
 
@@ -210,15 +223,6 @@ void BiCGSTAB::solve(double p_precision)
 
 		h = specOp3(f_x, p, alpha, 1);
 
-		/*if (sqrt(
-			vectorScalarMultpl(
-				vectorSubstract(f_b, f_A * h),
-				vectorSubstract(f_b, f_A * h))) < p_precision)
-		{
-			f_x = h;
-			break;
-		}*/
-
 		s = specOp3(r, v, alpha, -1);
 
 		t = f_A * s;
@@ -227,10 +231,12 @@ void BiCGSTAB::solve(double p_precision)
 
 		f_x = specOp3(h, s, omega, 1);
 
+		tech = vectorSubstract(f_b, f_A * f_x);
+
 		if (sqrt(
 			vectorScalarMultpl(
-				vectorSubstract(f_b, f_A * f_x),
-				vectorSubstract(f_b, f_A * f_x))) < p_precision)
+				tech,
+				tech)) < p_precision)
 			break;
 
 		r = specOp3(s, t, omega, -1);
@@ -244,11 +250,20 @@ void BiCGSTAB::solve(double p_precision)
 std::vector<double> BiCGSTAB::specOp2(const std::vector<double>& p_r, const std::vector<double>& p_p, const std::vector<double>& p_v, double omega, double beta) const
 {
 	std::vector<double> res(f_size, 0);
-
-#pragma omp parallel for
-	for (int at = 0; at < f_size; at++)
+	if (f_size > 1000)
 	{
-		res[at] = p_r[at] + (p_p[at] - p_v[at] * omega) * beta;
+#pragma omp parallel for
+		for (int at = 0; at < f_size; at++)
+		{
+			res[at] = p_r[at] + (p_p[at] - p_v[at] * omega) * beta;
+		}
+	}
+	else
+	{
+		for (int at = 0; at < f_size; at++)
+		{
+			res[at] = p_r[at] + (p_p[at] - p_v[at] * omega) * beta;
+		}
 	}
 
 	return res;
@@ -257,11 +272,20 @@ std::vector<double> BiCGSTAB::specOp2(const std::vector<double>& p_r, const std:
 std::vector<double> BiCGSTAB::specOp3(const std::vector<double>& p_s, const std::vector<double>& p_t, double num, int sign) const
 {
 	std::vector<double> res(f_size, 0);
-
-#pragma omp parallel for
-	for (int at = 0; at < f_size; at++)
+	if (f_size > 1000)
 	{
-		res[at] = p_s[at] + sign * (p_t[at] * num);
+#pragma omp parallel for
+		for (int at = 0; at < f_size; at++)
+		{
+			res[at] = p_s[at] + sign * (p_t[at] * num);
+		}
+	}
+	else
+	{
+		for (int at = 0; at < f_size; at++)
+		{
+			res[at] = p_s[at] + sign * (p_t[at] * num);
+		}
 	}
 
 	return res;
@@ -281,12 +305,20 @@ double BiCGSTAB::vectorScalarMultpl(const std::vector<double>& p_a, const std::v
 {
 	double res = 0;
 	int size = p_a.size();
-#pragma omp parallel for reduction(+:res)
-	for (int i = 0; i < size; i++)
+	if (f_size > 1000)
 	{
-		//printf("parallel region, thread=%d\n", omp_get_thread_num());
-		
-		res += p_a[i] * p_b[i];
+#pragma omp parallel for reduction(+:res)
+		for (int i = 0; i < size; i++)
+		{
+			res += p_a[i] * p_b[i];
+		}
+	}
+	else
+	{
+		for (int i = 0; i < size; i++)
+		{
+			res += p_a[i] * p_b[i];
+		}
 	}
 	return res;
 }
@@ -296,11 +328,20 @@ std::vector<double> BiCGSTAB::vectorSubstract(const std::vector<double>& p_a, co
 	int size = p_a.size();
 	std::vector<double> res(size); 
 	
-#pragma omp parallel for //schedule(static)
-	for (int w = 0; w < size; w++)
+	if (f_size > 1000)
 	{
-		//printf("parallel region, thread=%d\n", omp_get_thread_num());
-		res[w] = p_a[w] - p_b[w];
+#pragma omp parallel for
+		for (int w = 0; w < size; w++)
+		{
+			res[w] = p_a[w] - p_b[w];
+		}
+	}
+	else
+	{
+		for (int w = 0; w < size; w++)
+		{
+			res[w] = p_a[w] - p_b[w];
+		}
 	}
 
 	return res;
@@ -313,19 +354,16 @@ std::vector<double> BiCGSTAB::vectorAdd(const std::vector<double>& p_a, const st
 	std::vector<double> res(size);
 	
 
-	if (test)
+	if (f_size > 1000)
 	{
-#pragma omp parallel for //schedule(static)
+#pragma omp parallel for
 		for (int w = 0; w < size; w++)
 		{
-#pragma omp critical (cout)
-			std::cout << " " << omp_get_thread_num();
 			res[w] = p_a[w] + p_b[w];
 		}
 	}
 	else
 	{
-#pragma omp parallel for //schedule(static)
 		for (int w = 0; w < size; w++)
 		{
 			res[w] = p_a[w] + p_b[w];
@@ -339,12 +377,22 @@ std::vector<double> BiCGSTAB::vectorMultiply(const std::vector<double>& p_a, dou
 {
 	int size = p_a.size();
 	std::vector<double> res(size);
-#pragma omp parallel for //schedule(static)
-	for (int w = 0; w < size; w++)
+	if (f_size > 1000)
 	{
-		//printf("parallel region, thread=%d\n", omp_get_thread_num());
-		res[w] = p_a[w] * p_omega;
+#pragma omp parallel for
+		for (int w = 0; w < size; w++)
+		{
+			res[w] = p_a[w] * p_omega;
+		}
 	}
+	else
+	{
+		for (int w = 0; w < size; w++)
+		{
+			res[w] = p_a[w] * p_omega;
+		}
+	}
+
 
 	return res;
 

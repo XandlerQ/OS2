@@ -14,7 +14,7 @@ CSRMatrix::CSRMatrix():
 CSRMatrix::CSRMatrix(unsigned int p_size, const std::vector<double>& p_Mat, const std::vector<int>& p_idx, const std::vector<int>& p_amts)
 {
 	if (p_amts.size() != p_size + 1 || p_Mat.size() != p_idx.size() || p_Mat.size() > p_size * p_size)
-		throw(std::exception("yikies!"));
+		throw(std::exception("Matrix initializing vectors had incompatible sizes."));
 	
 	f_size = p_size;
 	f_Mat = p_Mat;
@@ -163,7 +163,7 @@ std::vector<double> CSRMatrix::operator* (const std::vector<double>& p_vec)
 	res.resize(f_size);
 
 	if (f_size != p_vec.size())
-		throw(std::exception("yikies!"));
+		throw(std::exception("Multiplyed matrix and vector had incompatible sizes."));
 
 #pragma omp parallel for
 	for (int row = 0; row < f_size; row++)

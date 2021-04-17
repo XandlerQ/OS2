@@ -1,34 +1,60 @@
 
 #include <iostream>
+#include <iomanip>
 #include <vector>
 #include <ctime>
 #include "BiCGSTAB.h"
 
-static bool test;
-
 void printvector(std::vector<double> p_vec)
 {
+	std::cout << "-*-*-*-*-*-*-*-" << std::endl;
+
     for (int i = 0; i < p_vec.size(); i++)
     {
-        std::cout << p_vec.at(i) << std::endl;
+        std::cout << std::setw(4) << i + 1 << " ->    " << p_vec.at(i) << std::endl;
     }
+
+	std::cout << "-*-*-*-*-*-*-*-" << std::endl << std::endl;
 }
 
 int main()
 {
+	std::string matrixFName;
+
+	std::string vectorFName;
+
 	srand(time(NULL));
-
-	std::cout << "Testing mode? >>>";
-
-	std::cin >> test;
 
     omp_set_num_threads(4);
 
-	BiCGSTAB problem("D:\\screens\\Study\\ня\\work2\\opersis2\\1138_bus.txt", "D:\\screens\\Study\\ня\\work2\\opersis2\\b1138.txt", test);
+	std::cout << "Input matrix file name >>>  ";
+	std::cin >> matrixFName;
+	std::cout << std::endl;
+
+	std::cout << "Input vector file name >>>  ";
+	std::cin >> vectorFName;
+	std::cout << std::endl;
+
+	BiCGSTAB problem;
+
+	try
+	{
+		problem.setA(matrixFName);
+		problem.setb(vectorFName);
+	}
+	catch (std::exception exception)
+	{
+		std::cout << "Exception caught :" << std::endl << "''" << exception.what() << "''";
+		return 1;
+	}
+
+	std::cout << "Current problem dimensions :  " << problem.getSize() << std::endl << std::endl;
 
 	while (threads != 0)
 	{
-		std::cout << "Input thread number >>>";
+		std::string option;
+
+		std::cout << std::endl << "Input thread number >>>  ";
 
 
 		std::cin >> threads;
@@ -43,15 +69,47 @@ int main()
 		problem.solve(0.00001);
 		double timeEnd = omp_get_wtime();
 
-		auto res = problem.getSolution();
+        std:: cout << std::endl << "------------ Summary ------------" << std::endl << "Precision : " << problem.evaluateSolution() << std::endl;
 
-        printvector(res);
+        std::cout << std::endl << "Time elapsed : " << timeEnd - timeStart << std::endl;
 
-        std:: cout << std::endl << "Precision : " << problem.evaluateSolution();
+        std::cout << std::endl << "Iterations elapsed : " << problem.getIterCount() << std::endl << "---------------------------------" << std::endl;
 
-        std::cout << std::endl << "				*****             " << timeEnd - timeStart << std::endl;
+		bool badInput = true;
 
-        std::cout << std::endl << problem.getIterCount() << std::endl;
+		while (badInput)
+		{
+			std::cout << std::endl << "Show answer?(Y/N) >>>  ";
+			std::cin >> option;
+
+			if (option == "Y" || option == "y")
+			{
+				auto res = problem.getSolution();
+				printvector(res);
+				badInput = false;
+			}
+			else if (option == "N" || option == "n")
+			{
+				badInput = false;
+			}
+		}
+
+		badInput = true;
+
+		while (badInput)
+		{
+			std::cout << std::endl << "Exit?(Y/N) >>>  ";
+			std::cin >> option;
+
+			if (option == "Y" || option == "y")
+			{
+				return 0;
+			}
+			else if (option == "N" || option == "n")
+			{
+				badInput = false;
+			}
+		}
 	}
 	return 0;
 
