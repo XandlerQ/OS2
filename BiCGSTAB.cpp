@@ -209,7 +209,7 @@ void BiCGSTAB::solve(double p_precision)
 
 	std::vector<double> p(f_size, 0);
 
-	for (int i = 0; i < 99999999; i++)
+	for (int i = 0; i < 999999; i++)
 	{
 		rho_prev = rho;
 
@@ -328,7 +328,7 @@ double BiCGSTAB::vectorScalarMultpl(const std::vector<double>& p_a, const std::v
 	int size = p_a.size();
 	if (f_size > 1000)
 	{
-#pragma omp parallel for reduction(+:res)
+//#pragma omp parallel for reduction(+:res)
 		for (int i = 0; i < size; i++)
 		{
 			res += p_a[i] * p_b[i];

@@ -41,7 +41,7 @@ CSRMatrix CSRMatrix::operator* (double p_val) const
 {
 	CSRMatrix res(*this);
 	int size = res.f_Mat.size();
-#pragma omp parallel for //schedule(static)
+//#pragma omp parallel for //schedule(static)
 	for(int i = 0; i < size; i++)
 	{
 		res.f_Mat[i] *= p_val;
@@ -96,7 +96,7 @@ CSRMatrix operator* (const double p_val, CSRMatrix& p_M)
 
 	int size = res.f_Mat.size();
 
-#pragma omp parallel for //schedule(static)
+//#pragma omp parallel for //schedule(static)
 	for (int i = 0; i < size; i++)
 	{
 		//printf("parallel region, thread=%d\n", omp_get_thread_num());
